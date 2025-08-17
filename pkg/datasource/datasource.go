@@ -1,10 +1,13 @@
 package datasource
 
-type Record map[string]interface{}
+import "context"
 
 type DataSource interface {
 	Connect(connectionString string) error
-	Close() error
-	Query(query string) ([]Record, error)
+	Close(ctx context.Context) error
+	Query(ctx context.Context, database, method, collection, query string) ([]string, error)
 	Type() string
 }
+
+// Mongo method = FindOne, Find, Aggregate, collection=collection
+// Postgres method = Select, collection="", query="query"

@@ -4,6 +4,9 @@ import (
 	"context"
 	"doppelganger/pkg/llm"
 	"doppelganger/pkg/tool"
+	"encoding/json"
+	"fmt"
+	"log"
 
 	"github.com/tmc/langchaingo/llms"
 )
@@ -25,7 +28,6 @@ func (d *Doppelganger) RegisterTool(tool tool.DataSourceTool) error {
 }
 
 func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, userInstruction, model string) (string, error) {
-
 	// Get Provider
 	provider, err := llm.GetProvider(model)
 	if err != nil {
@@ -54,15 +56,18 @@ func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, user
 
 	// Start inifinite loop
 	for {
-
 		res, err := provider.GenerateContent(ctx, messageHistory, llms.WithTools(toolDef))
 		if err != nil {
 			return "", err
 		}
 
 		// Parse response to check if tool calls requested
+		var isToolCalled bool
 		for _, choice := range res.Choices {
 			for _, toolCall := range choice.ToolCalls {
+
+				isToolCalled = true
+
 				// Append tool_use to messageHistory
 				aiResponse := llms.MessageContent{
 					Role: llms.ChatMessageTypeAI,
@@ -78,21 +83,59 @@ func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, user
 					},
 				}
 				messageHistory = append(messageHistory, aiResponse)
+
+				// Call tools if requested
+				toolResult, err := d.CallTool(ctx, toolCall)
+				if err != nil {
+					toolResult = err.Error()
+				}
+
+				// Write back
+				response := llms.MessageContent{
+					Role: llms.ChatMessageTypeTool,
+					Parts: []llms.ContentPart{
+						llms.ToolCallResponse{
+							ToolCallID: toolCall.ID,
+							Name:       toolCall.FunctionCall.Name,
+							Content:    toolResult,
+						},
+					},
+				}
+
+				messageHistory = append(messageHistory, response)
 			}
 		}
 
-		// Call tools if requested
-	}
-
-	// Return decision
-
-	return "", nil
-}
-
-func (d *Doppelganger) CallTool(toolRequested *llms.ToolCall) (string, error) {
-	for _, registeredTool := range d.Tools {
-		if registeredTool.Name == toolRequested.FunctionCall.Name {
-
+		if !isToolCalled {
+			return res.Choices[0].Content, nil
 		}
 	}
+}
+
+func (d *Doppelganger) CallTool(ctx context.Context, toolRequested llms.ToolCall) (string, error) {
+	log.Printf("Trying to execute function %s", toolRequested.FunctionCall.Name)
+	for _, registeredTool := range d.Tools {
+		if registeredTool.Name == toolRequested.FunctionCall.Name {
+			var params map[string]interface{}
+			err := json.Unmarshal([]byte(toolRequested.FunctionCall.Arguments), &params)
+			if err != nil {
+				return "", err
+			}
+
+			result, err := registeredTool.Execute(ctx, params)
+			if err != nil {
+				log.Printf("Error from execute %s", err)
+				return "", err
+			}
+
+			resBytes, err := json.Marshal(result)
+			if err != nil {
+				return "", err
+			}
+
+			return string(resBytes), nil
+		}
+	}
+
+	return "", fmt.Errorf("invalid tool")
 }

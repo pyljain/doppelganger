@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	app := doppelganger.New()
 
 	mongoConnection := datasource.NewMongoDataSource()
@@ -16,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer mongoConnection.Close()
+	defer mongoConnection.Close(ctx)
 
 	tool := tool.DataSourceTool{
 		Source:      mongoConnection,
@@ -30,7 +31,10 @@ func main() {
 				},
 			},
 		},
-		Query: "{ code: \"$code\" }",
+		Query:      "{ \"swift_code\": \"{{ .code }}\" }",
+		Database:   "my_database",
+		Collection: "swift_codes",
+		Method:     "findOne",
 	}
 
 	err = app.RegisterTool(tool)
@@ -38,11 +42,10 @@ func main() {
 		panic(err)
 	}
 
-	systemInstruction: = "You are a helpful assistant"
-	prompt := "Can you validate that this transaction is valid?"
-	model := "gpt-3.5-turbo"
+	systemInstruction := "You are a helpful assistant"
+	prompt := "Can you validate if this swift code exists? Swift Code: UBSWCHZH80A"
+	model := "gpt-4.1"
 
-	ctx := context.Background()
 	result, err := app.MakeDecision(ctx, systemInstruction, prompt, model)
 	if err != nil {
 		panic(err)

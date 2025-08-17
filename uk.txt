@@ -1,0 +1,20 @@
+Q: What is the SWIFT code for Example Bank UK?
+A: EXUKGB2LXXX
+
+Q: What policies apply to transfers at Example Bank UK?
+A: Faster Payments transfers up to £250,000 are allowed. BACS transactions must settle within 3 business days. GDPR and FCA compliance are mandatory.
+
+Q: Does Example Bank UK use real-time transaction monitoring?
+A: Yes, all transactions are monitored in real-time for fraud and AML compliance.
+
+Q: What is the SWIFT code for Test Savings UK?
+A: TSUKGB22
+
+Q: How does Test Savings UK handle CHAPS payments?
+A: CHAPS payments must be processed same-day if submitted before 3:30 PM.
+
+Q: What policies apply to large-value transfers at Test Savings UK?
+A: Transfers greater than £100,000 require enhanced due diligence. Customers must be notified of interest rate changes at least 14 days in advance.
+
+Q: How quickly must Test Savings UK resolve customer complaints?
+A: Within 8 weeks, in line with FCA guidelines.

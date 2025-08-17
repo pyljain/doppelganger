@@ -10,7 +10,7 @@ import (
 )
 
 func GetProvider(model string) (llms.Model, error) {
-	if strings.HasPrefix(model, "gpt-3.5-turbo") {
+	if strings.HasPrefix(model, "gpt-4.1") {
 		return openai.New(openai.WithModel(model))
 	} else if strings.HasPrefix(model, "claude") {
 		return anthropic.New(anthropic.WithModel(model))
