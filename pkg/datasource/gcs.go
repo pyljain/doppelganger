@@ -17,8 +17,7 @@ func NewGCS(ctx context.Context) *GCS {
 	return &GCS{}
 }
 
-func (g *GCS) Connect(bucketName string) error {
-	ctx := context.Background()
+func (g *GCS) Connect(ctx context.Context, bucketName string) error {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return err
@@ -62,7 +61,6 @@ func (g *GCS) Query(ctx context.Context, database, method, collection, query str
 		if err != nil {
 			return nil, err
 		}
-
 		defer reader.Close()
 
 		objectBytes, err := io.ReadAll(reader)
@@ -76,11 +74,3 @@ func (g *GCS) Query(ctx context.Context, database, method, collection, query str
 
 	return nil, fmt.Errorf("method not supported")
 }
-
-/*
-	Connect(connectionString string) error
-	Close(ctx context.Context) error
-	Query(ctx context.Context, database, method, collection, query string) ([]string, error)
-	Type() string
-
-*/

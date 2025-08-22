@@ -4,32 +4,52 @@ import (
 	"context"
 	"doppelganger/pkg/llm"
 	"doppelganger/pkg/tool"
-	"encoding/json"
 	"fmt"
-	"log"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/tmc/langchaingo/llms"
+	"github.com/xeipuuv/gojsonschema"
 )
 
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+type ProviderGeneratorFunc func(model string) (llms.Model, error)
+
 type Doppelganger struct {
-	Tools []tool.DataSourceTool
+	Tools                 []tool.DataSourceTool
+	providerGeneratorFunc ProviderGeneratorFunc
+	toolsMap              map[string]tool.DataSourceTool
 }
 
 func New() *Doppelganger {
-	return &Doppelganger{}
+	return &Doppelganger{
+		providerGeneratorFunc: llm.GetProvider,
+		toolsMap:              make(map[string]tool.DataSourceTool),
+	}
 }
 
 func (d *Doppelganger) RegisterTool(tool tool.DataSourceTool) error {
+	sl := gojsonschema.NewSchemaLoader()
+	sl.Validate = true
+	sl.Draft = gojsonschema.Draft7
+	sl.AutoDetect = false
+
+	err := sl.AddSchemas(gojsonschema.NewGoLoader(tool.Parameters))
+	if err != nil {
+		return err
+	}
 
 	// Save tool definition to the base struct
 	d.Tools = append(d.Tools, tool)
+	d.toolsMap[tool.Name] = tool
 
 	return nil
 }
 
 func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, userInstruction, model string) (string, error) {
 	// Get Provider
-	provider, err := llm.GetProvider(model)
+	provider, err := d.providerGeneratorFunc(model)
 	if err != nil {
 		return "", err
 	}
@@ -85,9 +105,9 @@ func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, user
 				messageHistory = append(messageHistory, aiResponse)
 
 				// Call tools if requested
-				toolResult, err := d.CallTool(ctx, toolCall)
+				toolResult, err := d.callTool(ctx, toolCall)
 				if err != nil {
-					toolResult = err.Error()
+					return "", err
 				}
 
 				// Write back
@@ -112,30 +132,29 @@ func (d *Doppelganger) MakeDecision(ctx context.Context, systemInstruction, user
 	}
 }
 
-func (d *Doppelganger) CallTool(ctx context.Context, toolRequested llms.ToolCall) (string, error) {
-	log.Printf("Trying to execute function %s", toolRequested.FunctionCall.Name)
-	for _, registeredTool := range d.Tools {
-		if registeredTool.Name == toolRequested.FunctionCall.Name {
-			var params map[string]interface{}
-			err := json.Unmarshal([]byte(toolRequested.FunctionCall.Arguments), &params)
-			if err != nil {
-				return "", err
-			}
+func (d *Doppelganger) callTool(ctx context.Context, toolRequested llms.ToolCall) (string, error) {
 
-			result, err := registeredTool.Execute(ctx, params)
-			if err != nil {
-				log.Printf("Error from execute %s", err)
-				return "", err
-			}
-
-			resBytes, err := json.Marshal(result)
-			if err != nil {
-				return "", err
-			}
-
-			return string(resBytes), nil
-		}
+	rt, exists := d.toolsMap[toolRequested.FunctionCall.Name]
+	if !exists {
+		return "", fmt.Errorf("invalid tool")
 	}
 
-	return "", fmt.Errorf("invalid tool")
+	var params map[string]interface{}
+	err := json.Unmarshal([]byte(toolRequested.FunctionCall.Arguments), &params)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := rt.Execute(ctx, params)
+	if err != nil {
+		return "", err
+	}
+
+	resBytes, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+
+	return string(resBytes), nil
+
 }

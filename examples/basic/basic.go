@@ -13,7 +13,7 @@ func main() {
 
 	mongoConnection := datasource.NewMongoDataSource()
 
-	err := mongoConnection.Connect("mongodb://localhost:27017")
+	err := mongoConnection.Connect(ctx, "mongodb://localhost:27017")
 	if err != nil {
 		panic(err)
 	}

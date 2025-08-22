@@ -13,7 +13,7 @@ func main() {
 
 	gcsDataSource := datasource.NewGCS(ctx)
 
-	err := gcsDataSource.Connect("sparkbox")
+	err := gcsDataSource.Connect(ctx, "sparkbox")
 	if err != nil {
 		panic(err)
 	}

@@ -1,7 +1,7 @@
 package llm
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/tmc/langchaingo/llms"
@@ -9,12 +9,14 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
+var ErrModelNotFound = errors.New("model not found")
+
 func GetProvider(model string) (llms.Model, error) {
-	if strings.HasPrefix(model, "gpt-4.1") {
+	if strings.HasPrefix(model, "gpt") {
 		return openai.New(openai.WithModel(model))
 	} else if strings.HasPrefix(model, "claude") {
 		return anthropic.New(anthropic.WithModel(model))
 	}
 
-	return nil, fmt.Errorf("Model not found")
+	return nil, ErrModelNotFound
 }

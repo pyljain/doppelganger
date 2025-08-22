@@ -2,14 +2,17 @@ package datasource
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type MongoDataSource struct {
 	client *mongo.Client
@@ -23,8 +26,11 @@ func (m *MongoDataSource) Type() string {
 	return "mongo"
 }
 
-func (m *MongoDataSource) Connect(connectionString string) error {
-	client, err := mongo.Connect(options.Client().ApplyURI(connectionString))
+func (m *MongoDataSource) Connect(ctx context.Context, connectionString string) error {
+	opts := options.Client().ApplyURI(connectionString).
+		SetMaxPoolSize(100).
+		SetMaxConnIdleTime(30 * time.Second)
+	client, err := mongo.Connect(opts)
 	if err != nil {
 		return err
 	}
@@ -78,7 +84,6 @@ func (m *MongoDataSource) Query(ctx context.Context, database, method, collectio
 	case "findOne":
 		res := mc.FindOne(ctx, bsonObject)
 		if res.Err() != nil {
-			log.Printf("Error in findOne %s", res.Err())
 			return nil, res.Err()
 		}
 
