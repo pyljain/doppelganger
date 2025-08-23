@@ -178,7 +178,7 @@ if err != nil {
 fmt.Println(result)
 ```
 
-## API Reference
+## Documentation
 
 ### Doppelganger
 
